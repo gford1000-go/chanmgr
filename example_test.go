@@ -18,6 +18,7 @@ func initialise() ([]InOut, ExitChannel) {
 				return stringutil.Reverse(s), nil
 			}, // This function handles sent messages, optionally returning values
 			WantResponse, // WantResponse|IgnoreResponse indicates whether function return values should be forwarded
+			1,            // The size of the response buffer (can be between 1 and 10,000)
 		),
 	}
 

@@ -28,7 +28,7 @@ var IgnoreResponse Response = false
 
 // CreateInOut constructs an instance of InOut.  sendChan should be an instance of
 // a channel which can be buffered or unbuffered.
-func CreateInOut(sendChan interface{}, p Processor, wantOrIgnore Response) InOut {
+func CreateInOut(sendChan interface{}, p Processor, wantOrIgnore Response, respBufferSize int) InOut {
 	if sendChan == nil {
 		panic("sendChan must not be nil")
 	}
@@ -48,7 +48,10 @@ func CreateInOut(sendChan interface{}, p Processor, wantOrIgnore Response) InOut
 
 	var retChan chan *response
 	if wantOrIgnore == WantResponse {
-		retChan = make(chan *response)
+		if respBufferSize < 1 || respBufferSize > 10000 {
+			panic("respBufferSize must be between 1 and 10,000")
+		}
+		retChan = make(chan *response, respBufferSize)
 	}
 
 	return InOut{

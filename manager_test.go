@@ -41,7 +41,7 @@ func TestNew(t *testing.T) {
 			name: "No In chan",
 			args: func() *args {
 				return &args{
-					channels: []InOut{CreateInOut(nil, nil, WantResponse)},
+					channels: []InOut{CreateInOut(nil, nil, WantResponse, 1)},
 					config:   nil,
 				}
 			},
@@ -52,7 +52,7 @@ func TestNew(t *testing.T) {
 			name: "Wrong type for In chan",
 			args: func() *args {
 				return &args{
-					channels: []InOut{CreateInOut([]byte{}, nil, WantResponse)},
+					channels: []InOut{CreateInOut([]byte{}, nil, WantResponse, 1)},
 					config:   nil,
 				}
 			},
@@ -63,7 +63,7 @@ func TestNew(t *testing.T) {
 			name: "No Fn specified",
 			args: func() *args {
 				return &args{
-					channels: []InOut{CreateInOut(make(chan bool), nil, WantResponse)},
+					channels: []InOut{CreateInOut(make(chan bool), nil, WantResponse, 1)},
 					config:   nil,
 				}
 			},
@@ -74,7 +74,7 @@ func TestNew(t *testing.T) {
 			name: "Invalid channel direction",
 			args: func() *args {
 				return &args{
-					channels: []InOut{CreateInOut(make(<-chan bool), nil, WantResponse)},
+					channels: []InOut{CreateInOut(make(<-chan bool), nil, WantResponse, 1)},
 					config:   nil,
 				}
 			},
@@ -89,7 +89,7 @@ func TestNew(t *testing.T) {
 						CreateInOut(
 							make(chan bool),
 							func(interface{}) (interface{}, error) { return nil, nil },
-							IgnoreResponse)},
+							IgnoreResponse, 1)},
 					exitChannel: exitChannel,
 					config:      nil,
 				}
@@ -104,7 +104,7 @@ func TestNew(t *testing.T) {
 						CreateInOut(
 							make(chan bool),
 							func(i interface{}) (interface{}, error) { return i, nil },
-							WantResponse)},
+							WantResponse, 1)},
 					exitChannel: exitChannel,
 					config:      nil,
 				}
@@ -123,7 +123,7 @@ func TestNew(t *testing.T) {
 						CreateInOut(
 							make(chan bool),
 							func(i interface{}) (interface{}, error) { return i, nil },
-							WantResponse)},
+							WantResponse, 1)},
 					exitChannel: exitChannel,
 					config:      nil,
 				}
@@ -142,7 +142,7 @@ func TestNew(t *testing.T) {
 						CreateInOut(
 							make(chan bool),
 							func(interface{}) (interface{}, error) { panic("Boom") },
-							WantResponse),
+							WantResponse, 1),
 					},
 					exitChannel: exitChannel,
 					config:      nil,
