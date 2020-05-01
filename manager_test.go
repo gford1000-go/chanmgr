@@ -12,156 +12,205 @@ func TestNew(t *testing.T) {
 		exitChannel ExitChannel
 		config      *Config
 	}
+	type argsGen func() *args
 	tests := []struct {
-		name     string
-		args     args
-		want     ExitChannel
-		wantErr  bool
-		sendReq  bool
-		runChan  int
-		runParam interface{}
-		runWant  interface{}
-		runErr   bool
+		name      string
+		args      argsGen
+		want      ExitChannel
+		wantPanic bool
+		wantErr   bool
+		sendReq   bool
+		runChan   int
+		runParam  interface{}
+		sendErr   bool
+		respWant  interface{}
+		respErr   bool
 	}{
 		{
 			name: "No channels",
-			args: args{
-				channels: nil,
-				config:   nil,
+			args: func() *args {
+				return &args{
+					channels: nil,
+					config:   nil,
+				}
 			},
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "No In chan",
-			args: args{
-				channels: []InOut{
-					{
-						In:  nil,
-						Fn:  nil,
-						Out: nil,
-					},
-				},
-				config: nil,
+			args: func() *args {
+				return &args{
+					channels: []InOut{CreateInOut(nil, nil, WantResponse)},
+					config:   nil,
+				}
 			},
-			want:    nil,
-			wantErr: true,
+			want:      nil,
+			wantPanic: true,
 		},
 		{
 			name: "Wrong type for In chan",
-			args: args{
-				channels: []InOut{
-					{
-						In:  []byte{},
-						Fn:  nil,
-						Out: nil,
-					},
-				},
-				config: nil,
+			args: func() *args {
+				return &args{
+					channels: []InOut{CreateInOut([]byte{}, nil, WantResponse)},
+					config:   nil,
+				}
 			},
-			want:    nil,
-			wantErr: true,
+			want:      nil,
+			wantPanic: true,
 		},
 		{
 			name: "No Fn specified",
-			args: args{
-				channels: []InOut{
-					{
-						In:  make(chan bool),
-						Fn:  nil,
-						Out: nil,
-					},
-				},
-				config: nil,
+			args: func() *args {
+				return &args{
+					channels: []InOut{CreateInOut(make(chan bool), nil, WantResponse)},
+					config:   nil,
+				}
 			},
-			want:    nil,
-			wantErr: true,
+			want:      nil,
+			wantPanic: true,
+		},
+		{
+			name: "Invalid channel direction",
+			args: func() *args {
+				return &args{
+					channels: []InOut{CreateInOut(make(<-chan bool), nil, WantResponse)},
+					config:   nil,
+				}
+			},
+			want:      nil,
+			wantPanic: true,
 		},
 		{
 			name: "No Out should be fine",
-			args: args{
-				channels: []InOut{
-					{
-						In:  make(chan bool),
-						Fn:  func(interface{}) (interface{}, error) { return nil, nil },
-						Out: nil,
-					},
-				},
-				exitChannel: exitChannel,
-				config:      nil,
+			args: func() *args {
+				return &args{
+					channels: []InOut{
+						CreateInOut(
+							make(chan bool),
+							func(interface{}) (interface{}, error) { return nil, nil },
+							IgnoreResponse)},
+					exitChannel: exitChannel,
+					config:      nil,
+				}
 			},
-			want:    exitChannel,
-			wantErr: false,
+			want: exitChannel,
 		},
 		{
 			name: "Reflection",
-			args: args{
-				channels: []InOut{
-					{
-						In:  make(chan bool),
-						Fn:  func(i interface{}) (interface{}, error) { return i, nil },
-						Out: make(chan *Response),
-					},
-				},
-				exitChannel: exitChannel,
-				config:      nil,
+			args: func() *args {
+				return &args{
+					channels: []InOut{
+						CreateInOut(
+							make(chan bool),
+							func(i interface{}) (interface{}, error) { return i, nil },
+							WantResponse)},
+					exitChannel: exitChannel,
+					config:      nil,
+				}
 			},
 			want:     exitChannel,
-			wantErr:  false,
 			sendReq:  true,
 			runChan:  0,
 			runParam: true,
-			runWant:  true,
-			runErr:   false,
+			respWant: true,
+		},
+		{
+			name: "Wrong parameter type supplied",
+			args: func() *args {
+				return &args{
+					channels: []InOut{
+						CreateInOut(
+							make(chan bool),
+							func(i interface{}) (interface{}, error) { return i, nil },
+							WantResponse)},
+					exitChannel: exitChannel,
+					config:      nil,
+				}
+			},
+			want:     exitChannel,
+			sendReq:  true,
+			runChan:  0,
+			runParam: 2,
+			sendErr:  true,
 		},
 		{
 			name: "Panic in function",
-			args: args{
-				channels: []InOut{
-					{
-						In:  make(chan bool),
-						Fn:  func(i interface{}) (interface{}, error) { panic("Boom") },
-						Out: make(chan *Response),
+			args: func() *args {
+				return &args{
+					channels: []InOut{
+						CreateInOut(
+							make(chan bool),
+							func(interface{}) (interface{}, error) { panic("Boom") },
+							WantResponse),
 					},
-				},
-				exitChannel: exitChannel,
-				config:      nil,
+					exitChannel: exitChannel,
+					config:      nil,
+				}
 			},
 			want:     exitChannel,
-			wantErr:  false,
 			sendReq:  true,
 			runChan:  0,
 			runParam: true,
-			runWant:  nil,
-			runErr:   true,
+			respWant: nil,
+			respErr:  true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := New(tt.args.channels, tt.args.exitChannel, tt.args.config)
+			argsCheck := func(f argsGen) (args *args, panicked bool) {
+				defer func() {
+					if r := recover(); r != nil {
+						panicked = true
+					}
+				}()
+				args = f()
+				return args, panicked
+			}
+			// First test is to validate whether channels are created correctly
+			args, panicked := argsCheck(tt.args)
+			if panicked != tt.wantPanic {
+				t.Errorf("Create args: returned %v, wantPanic = %v", panicked, tt.wantPanic)
+				return
+			}
+			if tt.wantPanic {
+				return // That was the test
+			}
+
+			// Second test is that the chanmgr is correctly created
+			got, err := New(args.channels, args.exitChannel, args.config)
 			defer func() {
 				if got != nil {
 					got <- Exit
 				}
 			}()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
-				return
+				t.Errorf("New() returned %v, wantErr = %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("New() = %v, want %v", got, tt.want)
 				return
 			}
+
+			// Last test is to validate the channels are working as expected
 			if got != nil && tt.sendReq {
-				tt.args.channels[tt.runChan].Send(tt.runParam)
-				if tt.args.channels[tt.runChan].Out != nil {
-					response := <-tt.args.channels[tt.runChan].Out
-					if (response.Err != nil) != tt.runErr {
-						t.Errorf("Channel submission error = %v, runErr %v", response.Err, tt.runErr)
+				sendErr := args.channels[tt.runChan].Send(tt.runParam)
+				if (sendErr != nil) != tt.sendErr {
+					t.Errorf("Channel submission error = %v, sendErr %v", sendErr, tt.sendErr)
+					return
+				}
+				if tt.sendErr {
+					return // End of test
+				}
+
+				if args.channels[tt.runChan].CanRecv() {
+					response, err := args.channels[tt.runChan].Recv()
+					if (err != nil) != tt.respErr {
+						t.Errorf("Channel submission error = %v, respErr %v", err, tt.respErr)
 						return
 					}
-					if !reflect.DeepEqual(response.Data, tt.runWant) {
-						t.Errorf("Channel submission error, got = %v, want %v", response.Data, tt.runWant)
+					if !reflect.DeepEqual(response, tt.respWant) {
+						t.Errorf("Channel submission error, got = %v, want %v", response, tt.respWant)
 						return
 					}
 				}
