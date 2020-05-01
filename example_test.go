@@ -6,43 +6,38 @@ import (
 	"github.com/golang/example/stringutil"
 )
 
-func initialise() ([]InOut, ExitChannel, error) {
+func initialise() ([]InOut, ExitChannel) {
 
 	// Declare the channels to be processed, and the functions to be called
+	// CreateInOut will panic if incorrect values are used
 	channels := []InOut{
-		{
-			In: make(chan string),
-			Fn: func(i interface{}) (interface{}, error) {
+		CreateInOut(
+			make(chan string), // This must be a channel able to send messages
+			func(i interface{}) (interface{}, error) {
 				s := i.(string)
 				return stringutil.Reverse(s), nil
-			},
-			Out: make(chan *Response),
-		},
+			}, // This function handles sent messages, optionally returning values
+			WantResponse, // WantResponse|IgnoreResponse indicates whether function return values should be forwarded
+		),
 	}
 
 	// Start the manager
-	exit, err := New(channels, nil, nil)
+	exit, _ := New(channels, nil, nil)
 
-	return channels, exit, err
+	return channels, exit
 }
 
 func Example() {
 
 	// Initialise with a single function being handled
-	channels, exit, _ := initialise()
+	channels, exit := initialise()
 	defer func() {
 		exit <- Exit // Gracefully stop the chanmgr
 	}()
 
 	// Send messages on the channels, receive output from processing
-	channels[0].Send("Hello")
-	response := <-channels[0].Out
+	response, _ := channels[0].SendRecv("Hello")
 
-	fmt.Println(response.Data)
+	fmt.Println(response)
 	// Output: olleH
-
-	// Catches incorrect types being sent to channels
-	if err := channels[0].Send(2); err != nil {
-		// Do something
-	}
 }
