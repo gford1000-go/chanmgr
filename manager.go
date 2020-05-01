@@ -40,7 +40,7 @@ var defaultConfig = &Config{
 	Log: log.New(ioutil.Discard, "", log.Ldate|log.Ltime|log.Lmicroseconds|log.Llongfile),
 }
 
-// New creates a manager instance that monitors for work in the supplied channels and processes accordingly
+// New creates a manager instance that monitors for work in the supplied channels and processes accordingly.
 // To terminate, send Exit to the returned ExitChannel.  This will be created if exitChannel=nil
 func New(channels []InOut, exitChannel ExitChannel, config *Config) (ExitChannel, error) {
 	if config == nil {
