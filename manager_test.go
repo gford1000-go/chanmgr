@@ -153,7 +153,7 @@ func TestNew(t *testing.T) {
 				return
 			}
 			if got != nil && tt.sendReq {
-				reflect.ValueOf(tt.args.channels[tt.runChan].In).Send(reflect.ValueOf(tt.runParam))
+				tt.args.channels[tt.runChan].Send(tt.runParam)
 				if tt.args.channels[tt.runChan].Out != nil {
 					response := <-tt.args.channels[tt.runChan].Out
 					if (response.Err != nil) != tt.runErr {

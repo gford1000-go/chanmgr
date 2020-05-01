@@ -15,6 +15,17 @@ type InOut struct {
 	Fn  func(interface{}) (interface{}, error) // The function to be invoked with messages from In
 }
 
+// Send places the specified data onto the In channel
+func (i InOut) Send(data interface{}) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	reflect.ValueOf(i.In).Send(reflect.ValueOf(data))
+	return err
+}
+
 // Response wraps the returned values from a function call
 type Response struct {
 	Data interface{} // Response from InOut.Fn()
