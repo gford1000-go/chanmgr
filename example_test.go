@@ -6,23 +6,20 @@ import (
 	"github.com/golang/example/stringutil"
 )
 
-func initialise() ([]InOut, ExitChannel) {
+func initialise() ([]*InOut, ExitChannel) {
 
 	// Declare the channels to be processed, and the functions to be called
 	// CreateInOut will panic if incorrect values are used
-	channels := []InOut{
-		CreateInOut(
-			make(chan string), // This must be a channel able to send messages
-			func(i interface{}) (interface{}, error) {
-				s := i.(string)
-				return stringutil.Reverse(s), nil
-			}, // This function handles sent messages, optionally returning values
-			WantResponse, // WantResponse|IgnoreResponse indicates whether function return values should be forwarded
-			1,            // The size of the response buffer (can be between 1 and 10,000)
-		),
+	channels := []*InOut{
+		&InOut{
+			Processor: func(i interface{}) (interface{}, error) {
+				return stringutil.Reverse(i.(string)), nil
+			}, // This function will receive messages, optionally returning values
+			WantResponse: WantResponse, // WantResponse|IgnoreResponse indicates whether function return values should be forwarded
+		},
 	}
 
-	// Start the manager
+	// Start a manager instance
 	exit, _ := New(channels, nil, nil)
 
 	return channels, exit
@@ -38,7 +35,6 @@ func Example() {
 
 	// Send messages on the channels, receive output from processing
 	response, _ := channels[0].SendRecv("Hello")
-
 	fmt.Println(response)
 	// Output: olleH
 }

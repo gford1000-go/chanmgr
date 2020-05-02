@@ -4,11 +4,28 @@
 
 
 ChanMgr | Geoff Ford
-==================================
+====================
 
 The chanmgr package provides a simple way to introduce channel based processing within a go programme.  
 
 An example of use is available in GoDocs.
+
+To use, create a slice of `InOut{}` that specify the `Processor` to be called, and whether its results are wanted,
+assign to a chanmgr via a call to `New()`, and then start sending data to be processed by the `Processor` using
+`InOut.Send()`.  
+
+`Send` returns a `Response` that can be checked for results availability, and then to retrieve
+them when required using `Response.Get()`.  
+
+`InOut.SendRecv()` combines the `Send` with the `Get` to block until a response is available from the `Processor`.
+
+The chanmgr's request buffer size is set using `Config.RequestBuffer` and defaults to 1, which will therefore 
+cause blocking on `Send` request.  
+
+When chanmgr buffer size is larger than one, chanmgr ensures that responses from the `Processor` are associated
+with the particular request.  `Send` allows a context value to be sent which is returned with the response, to allow
+a different goroutine to handle the response from the submitter, and continue with the same context.
+
 
 Installing and building the library
 ===================================
